@@ -2,7 +2,6 @@ import socket
 
 PUERTO = 5000
 
-# input() permite escribir la IP del servidor; Enter = este mismo equipo
 host = input("IP del servidor [127.0.0.1]: ").strip() or "127.0.0.1"
 apodo = input("Tu apodo: ").strip() or "anonimo"
 
@@ -14,11 +13,10 @@ try:
     while "\n" not in buffer:
         datos = cliente.recv(1024)
         if not datos:
-            raise ConnectionResetError   # el servidor cerro antes de contestar
+            raise ConnectionResetError   
         buffer += datos.decode("utf-8")
-    respuesta = buffer.split("\n", 1)[0]          # ej. "turno>7"
+    respuesta = buffer.split("\n", 1)[0]       
 
-    # Separar la respuesta del protocolo: "turno>7" -> ("turno", ">", "7")
     tipo, _, valor = respuesta.partition(">")
     if tipo == "turno":
         print(f"{apodo}, tu turno es el numero {valor}")
