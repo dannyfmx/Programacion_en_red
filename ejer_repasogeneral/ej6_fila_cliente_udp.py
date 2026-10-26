@@ -10,7 +10,7 @@ cliente.settimeout(3)
 try:
     cliente.sendto("CUANTOS".encode("utf-8"), (host, PUERTO))
     datos, _ = cliente.recvfrom(1024)
-    respuesta = datos.decode("utf-8").strip()      # ej. "van>12"
+    respuesta = datos.decode("utf-8").strip()  
     tipo, _, valor = respuesta.partition(">")
     if tipo == "van":
         print(f"Turnos asignados hasta ahora: {valor}")
