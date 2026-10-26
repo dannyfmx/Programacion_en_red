@@ -23,13 +23,10 @@ def atender_cliente(conexion, direccion):
                 mensaje, buffer = buffer.split("\n", 1)
                 conexion.sendall((mensaje + "\n").encode("utf-8"))
     except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-        # Desconexion abrupta: se registra y el hilo termina sin tumbar al servidor
         registrar(f"{direccion} se desconecto abruptamente")
     except UnicodeDecodeError:
-        # El cliente mando bytes que no son UTF-8 valido
         registrar(f"{direccion} envio datos que no son UTF-8")
     finally:
-        # Siempre se ejecuta: liberamos el socket y dejamos constancia del cierre
         conexion.close()
         registrar(f"Conexion cerrada: {direccion}")
 
@@ -44,7 +41,6 @@ try:
         conexion, direccion = servidor.accept()
         threading.Thread(target=atender_cliente, args=(conexion, direccion), daemon=True).start()
 except KeyboardInterrupt:
-    # Ctrl+C en la consola del servidor: salir de forma ordenada
     registrar("Servidor detenido por el usuario")
 finally:
     servidor.close()
