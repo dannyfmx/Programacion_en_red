@@ -2,13 +2,12 @@ import socket
 import threading
 import time
 
-HOST = "0.0.0.0"       # escuchar en todas las interfaces (para que otros equipos se conecten)
+HOST = "0.0.0.0"      
 PUERTO_TCP = 5000
 PUERTO_UDP = 5001
 
-# ---- Estado compartido entre hilos ----
-turno_actual = 0               # cuantos turnos se han asignado
-candado = threading.Lock()     # protege a turno_actual
+turno_actual = 0              
+candado = threading.Lock()   
 
 def registrar(texto):
     print(f"{time.strftime('%H:%M:%S')} | {texto}")
@@ -16,8 +15,6 @@ def registrar(texto):
 def tomar_turno():
     """Asigna el siguiente turno de forma segura entre hilos."""
     global turno_actual
-    # "with candado" adquiere el Lock al entrar y lo libera al salir
-    # (incluso si ocurre una excepcion). Solo un hilo a la vez ejecuta esto.
     with candado:
         turno_actual += 1
         return turno_actual
@@ -27,18 +24,13 @@ def total_asignados():
     with candado:
         return turno_actual
 
-# -----------------------------------------------------------------------------
-# Parte TCP: un hilo por cliente
-# -----------------------------------------------------------------------------
 def procesar_mensaje(mensaje):
     """Recibe una linea del cliente y devuelve la respuesta (sin el '\n')."""
-    # partition(">") separa en (antes, ">", despues). Ej: "TURNO>ana" -> ("TURNO", ">", "ana")
     comando, separador, apodo = mensaje.strip().partition(">")
     if comando == "TURNO" and separador and apodo:
         numero = tomar_turno()
         registrar(f"Turno {numero} asignado a '{apodo}'")
         return f"turno>{numero}"
-    # Mensaje con formato incorrecto: se responde con error pero NO se cierra nada
     return "error>formato esperado TURNO>apodo"
 
 def atender_cliente(conexion, direccion):
@@ -47,10 +39,10 @@ def atender_cliente(conexion, direccion):
     try:
         while True:
             datos = conexion.recv(1024)
-            if not datos:                       # el cliente cerro
+            if not datos:                     
                 break
             buffer += datos.decode("utf-8")
-            while "\n" in buffer:               # framing por '\n'
+            while "\n" in buffer:               
                 mensaje, buffer = buffer.split("\n", 1)
                 respuesta = procesar_mensaje(mensaje)
                 conexion.sendall((respuesta + "\n").encode("utf-8"))
@@ -59,15 +51,11 @@ def atender_cliente(conexion, direccion):
     except UnicodeDecodeError:
         registrar(f"TCP {direccion} envio datos que no son UTF-8")
     except Exception as e:
-        # Red de seguridad: cualquier error inesperado solo termina ESTE hilo
         registrar(f"TCP {direccion} error inesperado: {e!r}")
     finally:
         conexion.close()
         registrar(f"TCP cerrado: {direccion}")
-
-# -----------------------------------------------------------------------------
-# Parte UDP: un solo hilo que atiende todos los datagramas
-# -----------------------------------------------------------------------------
+        
 def ciclo_udp():
     sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock_udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -75,8 +63,6 @@ def ciclo_udp():
     registrar(f"UDP escuchando en el puerto {PUERTO_UDP}")
 
     while True:
-        # El try esta DENTRO del while: si un datagrama provoca error,
-        # se registra y el ciclo continua con el siguiente.
         try:
             datos, direccion = sock_udp.recvfrom(1024)
             mensaje = datos.decode("utf-8").strip()
@@ -89,19 +75,12 @@ def ciclo_udp():
         except UnicodeDecodeError:
             registrar("UDP: datagrama no UTF-8 ignorado")
         except ConnectionResetError:
-            # En Windows, si un cliente UDP ya cerro su puerto, el SO puede
-            # reportar este error en el siguiente recvfrom. Se ignora.
             pass
         except Exception as e:
             registrar(f"UDP error inesperado: {e!r}")
 
-# -----------------------------------------------------------------------------
-# Programa principal
-# -----------------------------------------------------------------------------
-# 1) Arrancar el hilo UDP (daemon: muere al cerrar el programa)
 threading.Thread(target=ciclo_udp, daemon=True, name="hilo-udp").start()
 
-# 2) El hilo principal se encarga de TCP
 servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 servidor.bind((HOST, PUERTO_TCP))
