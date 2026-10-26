@@ -10,10 +10,10 @@ def atender_cliente(conexion, direccion):
     buffer = ""
     while True:
         datos = conexion.recv(1024)
-        if not datos:                      # recv vacio = el cliente cerro
+        if not datos:                 
             break
         buffer += datos.decode("utf-8")
-        while "\n" in buffer:              # framing por salto de linea
+        while "\n" in buffer:       
             mensaje, buffer = buffer.split("\n", 1)
             print(f"[{direccion}] {mensaje}")
             conexion.sendall((mensaje + "\n").encode("utf-8"))
@@ -26,14 +26,12 @@ servidor.bind((HOST, PUERTO))
 servidor.listen(5)
 print(f"Servidor multicliente escuchando en el puerto {PUERTO}...")
 
-# El hilo principal solo hace accept() y lanza hilos
 while True:
     conexion, direccion = servidor.accept()
     hilo = threading.Thread(
-        target=atender_cliente,          # funcion que ejecutara el hilo
-        args=(conexion, direccion),      # argumentos (tupla)
-        daemon=True,                     # daemon: el hilo muere si el programa principal termina (Ctrl+C)
+        target=atender_cliente,          
+        args=(conexion, direccion),    
+        daemon=True,                    
     )
-    hilo.start()                         # arranca el hilo y el while vuelve de inmediato a accept()
-    # active_count incluye al hilo principal, por eso se resta 1
+    hilo.start()             
     print(f"Clientes activos: {threading.active_count() - 1}")
